@@ -1,6 +1,6 @@
 port = 24813
 ###############################################################################################
-version = 0.6
+version = 0.7
 WP_model = {
     "landlord": "douzero_WP/landlord.ckpt",
     "landlord_up": "douzero_WP/landlord_up.ckpt",
@@ -23,14 +23,14 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
     action: "", #init/play
     data: {}
     #(init:){
-        "group_id",
+        "pid", # process_id
         "model", #WP/ADP/...
         "hand_cards",
         "position_code",
         "three_landlord_cards"
         }
     (play:){
-        "group_id",
+        "pid",
         "player",
         "cards"
     }
@@ -43,13 +43,13 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
     action: "", # receive/play
     status: "", # ok/fail
     msg: "", # status为fail时不为空
-    data: {} # status为fail时为{}或{"group_id"}
+    data: {} # status为fail时，如果能获取到pid则为{"pid"}，否则为{}
     #(receive:){
-        "group_id": gid,
+        "pid": str,
         "game_over": boolen
     }
     (play:){
-        "group_id": gid,
+        "pid": pid,
         "cards": [],
         "confidence": "",
         "game_over": boolen

@@ -90,8 +90,8 @@ def init(landlord, landlord_up, landlord_down, data):
     res_game_over = False
 
     try:
-        gid = ""
-        gid = str(data["group_id"])
+        pid = ""
+        pid = str(data["pid"])
         # 玩家手牌
         user_hand_cards_real = data["hand_cards"]
         use_hand_cards_env = [RealCard2EnvCard[c] for c in list(user_hand_cards_real)]
@@ -175,23 +175,23 @@ def init(landlord, landlord_up, landlord_down, data):
                 env = None
 
             res_data = {
-                "group_id": gid,
+                "pid": pid,
                 "cards": cards,
                 "confidence": confidence,
                 "game_over": res_game_over,
             }
             res_action = "play"
         else:
-            res_data = {"group_id": gid, "game_over": res_game_over}
+            res_data = {"pid": pid, "game_over": res_game_over}
             res_action = "receive"
 
-        env_list[gid] = env
+        env_list[pid] = env
         res_status = "ok"
     except Exception as err:
         res_action = "init"
         res_status = "fail"
         res_msg = err
-        res_data = {"group_id": gid}
+        res_data = {"pid": pid}
 
     result = {
         "type": res_type,
@@ -213,15 +213,15 @@ def next(data):  # 收到他人出牌
 
     global env_list
     try:
-        gid = ""
-        gid = str(data["group_id"])
+        pid = ""
+        pid = str(data["pid"])
 
-        if gid not in env_list.keys():
+        if pid not in env_list.keys():
             error = Exception(f"此窗口并未初始化游戏进程")
             raise error
 
         player = data["player"]  # int 0/1/2
-        env = env_list[gid]
+        env = env_list[pid]
         res_action = ""
 
         if (
@@ -253,22 +253,22 @@ def next(data):  # 收到他人出牌
                     res_game_over = True
                     env = None
                 res_data = {
-                    "group_id": gid,
+                    "pid": pid,
                     "cards": cards,
                     "confidence": confidence,
                     "game_over": res_game_over,
                 }
                 res_action = "play"
             else:
-                res_data = {"group_id": gid, "game_over": res_game_over}
+                res_data = {"pid": pid, "game_over": res_game_over}
                 res_action = "receive"
 
-        env_list[gid] = env
+        env_list[pid] = env
         res_status = "ok"
         # print(f"result:{result}")
     except Exception as err:
         res_action = "step"
-        res_data = {"group_id": gid}
+        res_data = {"pid": pid}
         res_status = "fail"
         res_msg = str(err)
     result = {
