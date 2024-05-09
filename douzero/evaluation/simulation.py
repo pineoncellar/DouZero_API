@@ -190,7 +190,7 @@ def init(landlord, landlord_up, landlord_down, data):
     except Exception as err:
         res_action = "init"
         res_status = "fail"
-        res_msg = err
+        res_msg = str(err)
         res_data = {"pid": pid}
 
     result = {

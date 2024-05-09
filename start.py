@@ -85,7 +85,7 @@ class Request(BaseHTTPRequestHandler):
         data = self.rfile.read(int(self.headers["content-length"]))
         data = data.decode()
         data = json.loads(data)
-        res = ""
+        res = {}
 
         print(f"get post data: {data}\n")
 
