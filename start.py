@@ -121,12 +121,13 @@ class Request(BaseHTTPRequestHandler):
                         f"baselines/{model}/landlord_down.ckpt",
                         data["data"],
                     )
-                res = {
-                    "action": "init",
-                    "status": "fail",
-                    "data": {},
-                    "mag": "找不到此模型",
-                }
+                else:
+                    res = {
+                        "action": "init",
+                        "status": "fail",
+                        "data": {},
+                        "mag": "找不到此模型",
+                    }
 
         elif data["action"] == "play":  # 出牌阶段
             res = next(data["data"])
