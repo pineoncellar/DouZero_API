@@ -1,16 +1,6 @@
 port = 24813
 ###############################################################################################
-version = 0.7
-WP_model = {
-    "landlord": "douzero_WP/landlord.ckpt",
-    "landlord_up": "douzero_WP/landlord_up.ckpt",
-    "landlord_down": "douzero_WP/landlord_down.ckpt",
-}
-ADP_model = {
-    "landlord": "douzero_ADP/landlord.ckpt",
-    "landlord_up": "douzero_ADP/landlord_up.ckpt",
-    "landlord_down": "douzero_ADP/landlord_down.ckpt",
-}
+version = 0.8
 ###############################################################################################
 import os
 import time
@@ -24,11 +14,21 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
     data: {}
     #(init:){
         "pid", # process_id
-        "model", #WP/ADP/...
-        "hand_cards",
-        "position_code",
-        "three_landlord_cards"
-        }
+        "three_landlord_cards",
+        "ai_amount": int,
+        "player_data":[
+            {
+                "model", #WP/ADP/...
+                "hand_cards",
+                "position_code"
+            },
+            {
+                "model", #WP/ADP/...
+                "hand_cards",
+                "position_code",
+            }
+        ]
+    }
     (play:){
         "pid",
         "player",
@@ -50,8 +50,16 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
     }
     (play:){
         "pid": pid,
-        "cards": [],
-        "confidence": "",
+        "play": [
+            {
+                "cards": [],
+                "confidence": ""
+            },
+            {
+                "cards": [],
+                "confidence": ""
+            }
+        ],
         "game_over": boolen
     }
 }
@@ -91,43 +99,7 @@ class Request(BaseHTTPRequestHandler):
 
         if data["action"] == "init":  # 初始化阶段
             print(f"get initialize request, initializing...")
-
-            model = data["data"]["model"]
-            # 选取模型，WP为预训练的胜率为主模型，ADP为预训练的综合分数为主模型
-            if model == "WP":
-                res = init(
-                    f"baselines/{WP_model['landlord']}",
-                    f"baselines/{WP_model['landlord_up']}",
-                    f"baselines/{WP_model['landlord_down']}",
-                    data["data"],
-                )
-            elif model == "ADP":
-                res = init(
-                    f"baselines/{ADP_model['landlord']}",
-                    f"baselines/{ADP_model['landlord_up']}",
-                    f"baselines/{ADP_model['landlord_down']}",
-                    data["data"],
-                )
-            else:
-                # 其它模型
-                if (
-                    os.path.exists(f"baselines/{model}/landlord.ckpt")
-                    and os.path.exists(f"baselines/{model}/landlord_up.ckpt")
-                    and os.path.exists(f"baselines/{model}/landlord_down.ckpt")
-                ):
-                    res = init(
-                        f"baselines/{model}/landlord.ckpt",
-                        f"baselines/{model}/landlord_up.ckpt",
-                        f"baselines/{model}/landlord_down.ckpt",
-                        data["data"],
-                    )
-                else:
-                    res = {
-                        "action": "init",
-                        "status": "fail",
-                        "data": {},
-                        "mag": "找不到此模型",
-                    }
+            res = init(data["data"])
 
         elif data["action"] == "play":  # 出牌阶段
             res = next(data["data"])

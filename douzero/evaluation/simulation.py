@@ -1,4 +1,4 @@
-import pickle
+import os
 from douzero.env.game import GameEnv
 from .deep_agent import DeepAgent
 
@@ -80,8 +80,20 @@ AllEnvCard = [
     30,
 ]
 
+WP_model = {
+    "landlord": "douzero_WP/landlord.ckpt",
+    "landlord_up": "douzero_WP/landlord_up.ckpt",
+    "landlord_down": "douzero_WP/landlord_down.ckpt",
+}
+ADP_model = {
+    "landlord": "douzero_ADP/landlord.ckpt",
+    "landlord_up": "douzero_ADP/landlord_up.ckpt",
+    "landlord_down": "douzero_ADP/landlord_down.ckpt",
+}
 
-def init(landlord, landlord_up, landlord_down, data):
+
+def init(data):
+    global env_list
     res_type = "init"
     res_action = ""
     res_data = {}
@@ -92,101 +104,258 @@ def init(landlord, landlord_up, landlord_down, data):
     try:
         pid = ""
         pid = str(data["pid"])
-        # 玩家手牌
-        user_hand_cards_real = data["hand_cards"]
-        use_hand_cards_env = [RealCard2EnvCard[c] for c in list(user_hand_cards_real)]
-        # 玩家角色
-        user_position_code = data["position_code"]
-        user_position = ["landlord_up", "landlord", "landlord_down"][user_position_code]
-        # 三张底牌
-        three_landlord_cards_real = data["three_landlord_cards"]
-        three_landlord_cards_env = [
-            RealCard2EnvCard[c] for c in list(three_landlord_cards_real)
-        ]
+        ai_amount = data["ai_amount"]
 
-        # 整副牌减去玩家手上的牌，就是其他人的手牌,再随机分配给另外两个角色 **如何分配对AI判断没有影响**
-        other_hand_cards = []
-        for i in set(AllEnvCard):
-            other_hand_cards.extend(
-                [i] * (AllEnvCard.count(i) - use_hand_cards_env.count(i))
+        if ai_amount == 1:
+
+            (
+                use_hand_cards_env,
+                user_position,
+                user_position_code,
+                three_landlord_cards_env,
+                ai_model,
+            ) = get_init_data(data, 0)
+
+            # 整副牌减去玩家手上的牌，就是其他人的手牌,再随机分配给另外两个角色 **如何分配对AI判断没有影响**
+            other_hand_cards = []
+            for i in set(AllEnvCard):
+                other_hand_cards.extend(
+                    [i] * (AllEnvCard.count(i) - use_hand_cards_env.count(i))
+                )
+
+            card_play_data_list = [{}]
+            card_play_data_list[0].update(
+                {
+                    "three_landlord_cards": three_landlord_cards_env,
+                    ["landlord_up", "landlord", "landlord_down"][
+                        (user_position_code + 0) % 3
+                    ]: use_hand_cards_env,
+                    ["landlord_up", "landlord", "landlord_down"][
+                        (user_position_code + 1) % 3
+                    ]: (
+                        other_hand_cards[0:17]
+                        if (user_position_code + 1) % 3 != 1
+                        else other_hand_cards[17:]
+                    ),
+                    ["landlord_up", "landlord", "landlord_down"][
+                        (user_position_code + 2) % 3
+                    ]: (
+                        other_hand_cards[0:17]
+                        if (user_position_code + 1) % 3 == 1
+                        else other_hand_cards[17:]
+                    ),
+                }
             )
+            # print(f"card_play_data_list: {card_play_data_list}")
+            # 生成手牌结束，校验手牌数量
 
-        card_play_data_list = [{}]
-        card_play_data_list[0].update(
-            {
-                "three_landlord_cards": three_landlord_cards_env,
-                ["landlord_up", "landlord", "landlord_down"][
-                    (user_position_code + 0) % 3
-                ]: use_hand_cards_env,  # 保证AI一定是第0位
-                ["landlord_up", "landlord", "landlord_down"][
-                    (user_position_code + 1) % 3
-                ]: (
-                    other_hand_cards[0:17]
-                    if (user_position_code + 1) % 3 != 1
-                    else other_hand_cards[17:]
-                ),
-                ["landlord_up", "landlord", "landlord_down"][
-                    (user_position_code + 2) % 3
-                ]: (
-                    other_hand_cards[0:17]
-                    if (user_position_code + 1) % 3 == 1
-                    else other_hand_cards[17:]
-                ),
+            if len(card_play_data_list[0]["three_landlord_cards"]) != 3:
+                error = Exception("底牌必须是3张")
+                raise error
+            if (
+                len(card_play_data_list[0]["landlord_up"]) != 17
+                or len(card_play_data_list[0]["landlord_down"]) != 17
+                or len(card_play_data_list[0]["landlord"]) != 20
+            ):
+                error = Exception("初始手牌数目有误")
+                raise error
+
+            players = {}
+            cards = []
+            players[user_position] = DeepAgent(user_position, ai_model)
+            env = GameEnv(players)
+            for idx, card_play_data in enumerate(card_play_data_list):
+                env.card_play_init(card_play_data)
+                print("initialize success, game start\n")
+
+            # print(f"env.players.keys(): {env.players.keys()}")
+            if (
+                env.acting_player_position == list(env.players.keys())[0]
+            ):  # 如果下一位是AI，则直接获取出牌
+                cards, confidence = env.step(data)
+                if env.game_over:
+                    # print("{}win, game over!\n".format("farmer" if env.winner == "farmer" else "landlord"))
+                    res_game_over = True
+                    env = None
+
+                res_data = {
+                    "pid": pid,
+                    "cards": cards,
+                    "confidence": confidence,
+                    "game_over": res_game_over,
+                }
+                res_action = "play"
+            else:
+                res_data = {"pid": pid, "game_over": res_game_over}
+                res_action = "receive"
+
+            env_list[pid] = env
+            res_status = "ok"
+
+        elif ai_amount == 2:
+            ai0_use_hand_cards_env = []
+            ai0_user_position = ""
+            ai0_model = ""
+            three_landlord_cards_env = []
+            ai1_use_hand_cards_env = []
+            ai1_user_position = ""
+            ai1_model = ""
+
+            (
+                ai0_use_hand_cards_env,
+                ai0_user_position,
+                ai0_user_position_code,
+                three_landlord_cards_env,
+                ai0_model,
+            ) = get_init_data(data, 0)
+
+            (
+                ai1_use_hand_cards_env,
+                ai1_user_position,
+                ai1_user_position_code,
+                three_landlord_cards_env,
+                ai1_model,
+            ) = get_init_data(data, 1)
+
+            # 玩家位号
+            player_position_code = 3 - ai0_user_position_code - ai1_user_position_code
+            player_position = ["landlord_up", "landlord", "landlord_down"][
+                player_position_code
+            ]
+
+            """# 玩家手牌
+            user_hand_cards_real = data["player_data"][0]["hand_cards"]
+            ai0_use_hand_cards_env = [
+                RealCard2EnvCard[c] for c in list(user_hand_cards_real)
+            ]
+            user_hand_cards_real = data["player_data"][1]["hand_cards"]
+            ai1_use_hand_cards_env = [
+                RealCard2EnvCard[c] for c in list(user_hand_cards_real)
+            ]
+            # 角色位号
+            ai0_user_position_code = data["player_data"][0]["position_code"]
+            ai0_user_position = ["landlord_up", "landlord", "landlord_down"][
+                ai0_user_position_code
+            ]
+            ai1_user_position_code = data["player_data"][1]["position_code"]
+            ai1_user_position = ["landlord_up", "landlord", "landlord_down"][
+                ai1_user_position_code
+            ]
+            player_position_code = 3 - ai0_user_position_code - ai1_user_position_code
+            player_position = ["landlord_up", "landlord", "landlord_down"][
+                player_position_code
+            ]
+            # 三张底牌
+            three_landlord_cards_real = data["three_landlord_cards"]
+            three_landlord_cards_env = [
+                RealCard2EnvCard[c] for c in list(three_landlord_cards_real)
+            ]
+            # AI模型
+            ai0_model_name = data["player_data"][0]["model"]
+            ai0_model_list = check_model(ai0_model_name)
+            if ai0_model_list == None:
+                error = Exception(f"找不到此模型：{ai0_model_name}")
+                raise error
+            else:
+                ai0_model = ai0_model_list[ai0_user_position_code]
+            ai1_model_name = data["player_data"][1]["model"]
+            ai1_model_list = check_model(ai1_model_name)
+            if ai1_model_list == None:
+                error = Exception(f"找不到此模型：{ai1_model_name}")
+                raise error
+            else:
+                ai1_model = ai1_model_list[ai1_user_position_code]"""
+
+            # 减去两位AI的牌，剩下的牌就是玩家的手牌
+            other_hand_cards = []
+            for i in set(AllEnvCard):
+                other_hand_cards.extend(
+                    [i]
+                    * (
+                        AllEnvCard.count(i)
+                        - list(ai0_use_hand_cards_env + ai1_use_hand_cards_env).count(i)
+                    )
+                )
+
+            card_play_data_list = [{}]
+            card_play_data_list[0].update(
+                {
+                    "three_landlord_cards": three_landlord_cards_env,
+                    ai0_user_position: ai0_use_hand_cards_env,
+                    ai1_user_position: ai1_use_hand_cards_env,
+                    player_position: other_hand_cards,
+                }
+            )
+            # print(f"card_play_data_list: {card_play_data_list}")
+            # 生成手牌结束，校验手牌数量
+
+            if len(card_play_data_list[0]["three_landlord_cards"]) != 3:
+                error = Exception("底牌必须是3张")
+                raise error
+            if (
+                len(card_play_data_list[0]["landlord_up"]) != 17
+                or len(card_play_data_list[0]["landlord_down"]) != 17
+                or len(card_play_data_list[0]["landlord"]) != 20
+            ):
+                """landlord_up_cards = card_play_data_list[0]["landlord_up"]
+                landlord_down_cards = card_play_data_list[0]["landlord_down"]
+                landlord_cards = card_play_data_list[0]["landlord"]
+                print(f"landlord_up_cards:{landlord_up_cards}  landlord_down_cards:{landlord_down_cards}  landlord_cards:{landlord_cards}")"""
+                error = Exception("初始手牌数目有误")
+                raise error
+
+            cards = []
+            players = {
+                ai0_user_position: DeepAgent(ai0_user_position, ai0_model),
+                ai1_user_position: DeepAgent(ai1_user_position, ai1_model),
             }
-        )
-        # print(f"card_play_data_list: {card_play_data_list}")
-        # 生成手牌结束，校验手牌数量
+            env = GameEnv(players)
+            for idx, card_play_data in enumerate(card_play_data_list):
+                env.card_play_init(card_play_data)
+                print("initialize success, game start\n")
 
-        if len(card_play_data_list[0]["three_landlord_cards"]) != 3:
-            error = Exception("底牌必须是3张")
-            raise error
-        if (
-            len(card_play_data_list[0]["landlord_up"]) != 17
-            or len(card_play_data_list[0]["landlord_down"]) != 17
-            or len(card_play_data_list[0]["landlord"]) != 20
-        ):
-            error = Exception("初始手牌数目有误")
-            raise error
+            if env.acting_player_position not in list(
+                env.players.keys()
+            ):  # 如果下一位不是AI
+                res_data = {"pid": pid, "game_over": res_game_over}
+                res_action = "receive"
 
-        card_play_model_path_dict = {
-            "landlord": landlord,
-            "landlord_up": landlord_up,
-            "landlord_down": landlord_down,
-        }
+            else:  # 下一位是AI
+                cards_pd, confidence_pd = env.step(data)  # ai出牌
+                cards_po = confidence_po = None
+                if env.game_over:
+                    # print("{}win, game over!\n".format("farmer" if env.winner == "farmer" else "landlord"))
+                    res_game_over = True
+                    env = None
+                else:
+                    if env.acting_player_position in list(
+                        env.players.keys()
+                    ):  # 第二位出牌的还是ai，则此ai为玩家下家，第一位出牌的ai为万家下家
+                        cards_po, confidence_po = env.step(data)
+                        if env.game_over:
+                            res_game_over = True
+                            env = None
+                    else:  # 第一位出牌的ai为玩家上家
+                        pass
 
-        global env_list
-        players = {}
-        cards = []
-        players[user_position] = DeepAgent(
-            user_position, card_play_model_path_dict[user_position]
-        )
-        env = GameEnv(players)
-        for idx, card_play_data in enumerate(card_play_data_list):
-            env.card_play_init(card_play_data)
-            print("initialize success, game start\n")
+                res_data = {
+                    "pid": pid,
+                    "game_over": res_game_over,
+                    "play": [
+                        {
+                            "cards": cards_pd,
+                            "confidence": confidence_pd,
+                        },
+                        {
+                            "cards": cards_po,
+                            "confidence": confidence_po,
+                        },
+                    ],
+                }
+                res_action = "play"
 
-        if (
-            env.acting_player_position == list(env.players.keys())[0]
-        ):  # 如果下一位是AI，则直接获取出牌
-            cards, confidence = env.step(data)
-            if env.game_over:
-                # print("{}win, game over!\n".format("farmer" if env.winner == "farmer" else "landlord"))
-                res_game_over = True
-                env = None
-
-            res_data = {
-                "pid": pid,
-                "cards": cards,
-                "confidence": confidence,
-                "game_over": res_game_over,
-            }
-            res_action = "play"
-        else:
-            res_data = {"pid": pid, "game_over": res_game_over}
-            res_action = "receive"
-
-        env_list[pid] = env
-        res_status = "ok"
+            env_list[pid] = env
+            res_status = "ok"
     except Exception as err:
         res_action = "init"
         res_status = "fail"
@@ -279,3 +448,63 @@ def next(data):  # 收到他人出牌
         "msg": res_msg,
     }
     return result
+
+
+def check_model(model):
+    if model == "WP":
+        return [
+            f"baselines/{WP_model['landlord_up']}",
+            f"baselines/{WP_model['landlord']}",
+            f"baselines/{WP_model['landlord_down']}",
+        ]
+    elif model == "ADP":
+        return [
+            f"baselines/{ADP_model['landlord_up']}",
+            f"baselines/{ADP_model['landlord']}",
+            f"baselines/{ADP_model['landlord_down']}",
+        ]
+    else:
+        # 其它模型
+        if (
+            os.path.exists(f"baselines/{model}/landlord.ckpt")
+            and os.path.exists(f"baselines/{model}/landlord_up.ckpt")
+            and os.path.exists(f"baselines/{model}/landlord_down.ckpt")
+        ):
+            return [
+                f"baselines/{model}/landlord.ckpt",
+                f"baselines/{model}/landlord_up.ckpt",
+                f"baselines/{model}/landlord_down.ckpt",
+            ]
+        else:
+            return None
+
+
+def get_init_data(data, index):
+    use_hand_cards_env = user_position = three_landlord_cards_env = ai_model = None
+    # 玩家手牌
+    user_hand_cards_real = data["player_data"][index]["hand_cards"]
+    use_hand_cards_env = [RealCard2EnvCard[c] for c in list(user_hand_cards_real)]
+    # 玩家角色
+    user_position_code = data["player_data"][index]["position_code"]
+    user_position = ["landlord_up", "landlord", "landlord_down"][user_position_code]
+    # 三张底牌
+    three_landlord_cards_real = data["three_landlord_cards"]
+    three_landlord_cards_env = [
+        RealCard2EnvCard[c] for c in list(three_landlord_cards_real)
+    ]
+    # 模型
+    ai_model_name = data["player_data"][index]["model"]
+    ai_model_list = check_model(ai_model_name)
+    if ai_model_list == None:
+        error = Exception(f"找不到此模型：{ai_model_name}")
+        raise error
+    else:
+        ai_model = ai_model_list[user_position_code]
+
+    return (
+        use_hand_cards_env,
+        user_position,
+        user_position_code,
+        three_landlord_cards_env,
+        ai_model,
+    )
