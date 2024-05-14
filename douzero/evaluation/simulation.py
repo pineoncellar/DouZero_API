@@ -316,11 +316,11 @@ def init(data):
 
             if env.acting_player_position not in list(
                 env.players.keys()
-            ):  # 如果下一位不是AI
+            ):  # 玩家是地主
                 res_data = {"pid": pid, "game_over": res_game_over}
                 res_action = "receive"
 
-            else:  # 下一位是AI
+            else:  # AI是地主
                 cards_pd, confidence_pd = env.step(data)  # ai出牌
                 cards_po = confidence_po = None
                 if env.game_over:
@@ -405,36 +405,54 @@ def next(data):  # 收到他人出牌
             error = Exception(f"非此玩家回合，当前为{acting_player}的回合")
             raise error
 
-        cards, ___ = env.step(data)
+        env.step(data) # 上报玩家出牌
         if env.game_over:
-            # print("{}win, game over!\n".format("farmer" if env.winner == "farmer" else "landlord"))
             res_game_over = True
             env = None
             return {"action": "receive", "data": {}}
 
         else:
             if (
-                env.acting_player_position == list(env.players.keys())[0]
+                env.acting_player_position in list(env.players.keys())
             ):  # 如果下一位是AI，则直接获取出牌
-                cards, confidence = env.step(data)
+                cards_pd, confidence_pd = env.step(data)  # ai出牌
+                cards_po = confidence_po = None
                 if env.game_over:
                     # print("{}win, game over!\n".format("farmer" if env.winner == "farmer" else "landlord"))
                     res_game_over = True
                     env = None
+                else:
+                    if env.acting_player_position in list(
+                        env.players.keys()
+                    ):  # 第二位出牌的还是ai，也就是双ai时
+                        cards_po, confidence_po = env.step(data)
+                        if env.game_over:
+                            res_game_over = True
+                            env = None
+                    else:  # 单ai时
+                        pass
+
+                res_action = "play"
                 res_data = {
                     "pid": pid,
-                    "cards": cards,
-                    "confidence": confidence,
                     "game_over": res_game_over,
+                    "play": [
+                        {
+                            "cards": cards_pd,
+                            "confidence": confidence_pd,
+                        },
+                        {
+                            "cards": cards_po,
+                            "confidence": confidence_po,
+                        },
+                    ],
                 }
-                res_action = "play"
             else:
                 res_data = {"pid": pid, "game_over": res_game_over}
                 res_action = "receive"
 
         env_list[pid] = env
         res_status = "ok"
-        # print(f"result:{result}")
     except Exception as err:
         res_action = "step"
         res_data = {"pid": pid}
