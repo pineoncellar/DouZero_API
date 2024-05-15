@@ -1,12 +1,16 @@
 port = 24813
+timeout = 18000  # 超过此时长游戏未继续进行则删除游戏进程
 ###############################################################################################
-version = 1.0
+version = 1.1
 ###############################################################################################
 import os
 import time
 import json
-from douzero.evaluation.simulation import init, next
+import threading
+from douzero.evaluation.simulation import init, next, env_list
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
+lock = threading.Lock()
 
 """post data
 {
@@ -114,12 +118,30 @@ class Request(BaseHTTPRequestHandler):
         self.wfile.write(res)
 
 
+class TimeCheck(threading.Thread):
+    def run(self):
+        while True:
+            global env_list
+            with lock:
+                timestamp = time.time()
+                tmp_env_list = dict(env_list.items())
+                for k, v in tmp_env_list.items():
+                    existed_times = timestamp - v.timestamp
+                    if existed_times > timeout:
+                        del env_list[k]
+                        print(f"pid:{k} game timeout, deleted.")
+            time.sleep(300)
+
+
 if __name__ == "__main__":
     print(f"DouZero_API . ver{version}")
 
     # 才疏学浅，不知道这两行的用途与意义，暂且保留
     os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+    time_check = TimeCheck()
+    time_check.start()
 
     host = ("127.0.0.1", port)
     print(f"listen at port {port}")

@@ -176,7 +176,7 @@ def init(data):
                 if env.game_over:
                     # print("{}win, game over!\n".format("farmer" if env.winner == "farmer" else "landlord"))
                     res_game_over = True
-                    env = None
+                    del env_list[pid]
 
                 res_data = {
                     "pid": pid,
@@ -319,7 +319,8 @@ def init(data):
                 }
                 res_action = "play"
 
-            env_list[pid] = env
+            if not res_game_over:
+                env_list[pid] = env
             res_status = "ok"
     except Exception as err:
         res_action = "init"
@@ -373,7 +374,7 @@ def next(data):  # 收到他人出牌
         env.step(data) # 上报玩家出牌
         if env.game_over:
             res_game_over = True
-            env = None
+            del env_list[pid]
             return {"action": "receive", "data": {}}
 
         else:
@@ -385,7 +386,7 @@ def next(data):  # 收到他人出牌
                 if env.game_over:
                     # print("{}win, game over!\n".format("farmer" if env.winner == "farmer" else "landlord"))
                     res_game_over = True
-                    env = None
+                    del env_list[pid]
                 else:
                     if env.acting_player_position in list(
                         env.players.keys()
@@ -393,7 +394,7 @@ def next(data):  # 收到他人出牌
                         cards_po, confidence_po = env.step(data)
                         if env.game_over:
                             res_game_over = True
-                            env = None
+                            del env_list[pid]
                     else:  # 单ai时
                         pass
 
@@ -416,7 +417,8 @@ def next(data):  # 收到他人出牌
                 res_data = {"pid": pid, "game_over": res_game_over}
                 res_action = "receive"
 
-        env_list[pid] = env
+        if not res_game_over :
+            env_list[pid] = env
         res_status = "ok"
     except Exception as err:
         res_action = "step"

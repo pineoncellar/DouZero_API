@@ -259,6 +259,8 @@ class GameEnv(object):
             self.get_acting_player_position()
             self.game_infoset = self.get_infoset()
 
+        self.timestamp = time.time()  # 更新时间
+
         # print(f"result:{result}  confidence:{confidence}")
         return result, confidence
 
