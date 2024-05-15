@@ -77,7 +77,7 @@ class Request(BaseHTTPRequestHandler):
 
         res = json.dumps(
             {
-                "info": "Douzero API",
+                "info": "DouZero API",
                 "version": version,
                 "link": [
                     "https://github.com/kwai/DouZero",
@@ -115,6 +115,7 @@ class Request(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    print(f"DouZero_API . ver{version}")
 
     # 才疏学浅，不知道这两行的用途与意义，暂且保留
     os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
