@@ -180,9 +180,17 @@ def init(data):
 
                 res_data = {
                     "pid": pid,
-                    "cards": cards,
-                    "confidence": confidence,
                     "game_over": res_game_over,
+                    "play": [
+                        {
+                            "cards": cards,
+                            "confidence": confidence,
+                        },
+                        {
+                            "cards": None,
+                            "confidence": None,
+                        },
+                    ],
                 }
                 res_action = "play"
             else:
@@ -222,49 +230,6 @@ def init(data):
             player_position = ["landlord_up", "landlord", "landlord_down"][
                 player_position_code
             ]
-
-            """# 玩家手牌
-            user_hand_cards_real = data["player_data"][0]["hand_cards"]
-            ai0_use_hand_cards_env = [
-                RealCard2EnvCard[c] for c in list(user_hand_cards_real)
-            ]
-            user_hand_cards_real = data["player_data"][1]["hand_cards"]
-            ai1_use_hand_cards_env = [
-                RealCard2EnvCard[c] for c in list(user_hand_cards_real)
-            ]
-            # 角色位号
-            ai0_user_position_code = data["player_data"][0]["position_code"]
-            ai0_user_position = ["landlord_up", "landlord", "landlord_down"][
-                ai0_user_position_code
-            ]
-            ai1_user_position_code = data["player_data"][1]["position_code"]
-            ai1_user_position = ["landlord_up", "landlord", "landlord_down"][
-                ai1_user_position_code
-            ]
-            player_position_code = 3 - ai0_user_position_code - ai1_user_position_code
-            player_position = ["landlord_up", "landlord", "landlord_down"][
-                player_position_code
-            ]
-            # 三张底牌
-            three_landlord_cards_real = data["three_landlord_cards"]
-            three_landlord_cards_env = [
-                RealCard2EnvCard[c] for c in list(three_landlord_cards_real)
-            ]
-            # AI模型
-            ai0_model_name = data["player_data"][0]["model"]
-            ai0_model_list = check_model(ai0_model_name)
-            if ai0_model_list == None:
-                error = Exception(f"找不到此模型：{ai0_model_name}")
-                raise error
-            else:
-                ai0_model = ai0_model_list[ai0_user_position_code]
-            ai1_model_name = data["player_data"][1]["model"]
-            ai1_model_list = check_model(ai1_model_name)
-            if ai1_model_list == None:
-                error = Exception(f"找不到此模型：{ai1_model_name}")
-                raise error
-            else:
-                ai1_model = ai1_model_list[ai1_user_position_code]"""
 
             # 减去两位AI的牌，剩下的牌就是玩家的手牌
             other_hand_cards = []

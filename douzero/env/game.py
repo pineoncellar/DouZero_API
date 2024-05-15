@@ -295,16 +295,15 @@ class GameEnv(object):
 
         return self.acting_player_position
 
-    # 更新手牌
     def update_acting_player_hand_cards(self, action):
         if action != []:
-            # 更新玩家手牌，删除对应的牌
-            if self.acting_player_position == list(self.players.keys())[0]:
+            # 更新AI手牌，删除对应的牌
+            if self.acting_player_position in list(self.players.keys()):
                 for card in action:
                     self.info_sets[
                         self.acting_player_position
                     ].player_hand_cards.remove(card)
-            # 更新另外两个玩家手牌，删除相同数量的牌
+            # 更新玩家手牌，删除相同数量的牌
             else:
                 del self.info_sets[self.acting_player_position].player_hand_cards[
                     0 : len(action)
