@@ -456,9 +456,9 @@ def check_model(model):
             and os.path.exists(f"baselines/{model}/landlord_down.ckpt")
         ):
             return [
+                f"baselines/{model}/landlord_down.ckpt",
                 f"baselines/{model}/landlord.ckpt",
                 f"baselines/{model}/landlord_up.ckpt",
-                f"baselines/{model}/landlord_down.ckpt",
             ]
         else:
             return None
