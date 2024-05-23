@@ -179,6 +179,10 @@ DouZero-ADP (baselines/douzero_ADP/): 以平均分数差异（Average Difference
 
 > 大概更倾向于出炸弹刷分
 
+## 超时检测
+
+程序每5分钟将检查一次进程列表，超过半个小时未响应的游戏进程将被删除。
+
 ## 使用自己的模型
 
 在`baselines/`文件夹下新建文件夹，将自己训练的`landlord.ckpt`、`landlord_up.ckpt`、`landlord_down.ckpt`扔进去，文件夹名即为游戏初始化时需要填入的"model"参数
