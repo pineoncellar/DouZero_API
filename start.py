@@ -1,9 +1,9 @@
-port = 24813
 timeout = 1800  # 超过此时长游戏未继续进行则删除游戏进程，单位s
 ###############################################################################################
-version = 1.2
+version = 1.3
 ###############################################################################################
 import os
+import argparse
 import time
 import json
 import threading
@@ -143,7 +143,24 @@ if __name__ == "__main__":
     time_check = TimeCheck()
     time_check.start()
 
-    host = ("127.0.0.1", port)
-    print(f"listen at port {port}")
+    parser = argparse.ArgumentParser(description="Start script with port and host")
+    parser.add_argument(
+        "-H", "--host", type=str, help="Host address", default="0.0.0.0"
+    )
+    parser.add_argument("-p", "--port", type=int, help="Port number", default=24813)
+    args = parser.parse_args()
+    host = args.host
+    port = args.port
+
+    host = (host, port)
+
+    print(f"Douzero_API has been launched successfully.")
+    print(f"Server listening on {host[0]}:{port}.")
+
     server = HTTPServer(host, Request)
-    server.serve_forever()  # 开启服务
+    try:
+        server.serve_forever()  # 开启服务
+    except KeyboardInterrupt:
+        server.server_close()
+        print("Server closed.")
+        exit(0)
