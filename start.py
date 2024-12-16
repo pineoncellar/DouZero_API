@@ -84,8 +84,8 @@ class Request(BaseHTTPRequestHandler):
                 "info": "DouZero API",
                 "version": version,
                 "link": [
+                    "https://github.com/pineoncellar/DouZero_API",
                     "https://github.com/kwai/DouZero",
-                    "https://github.com/tianqiraf/DouZero_For_HappyDouDiZhu",
                 ],
             }
         )
