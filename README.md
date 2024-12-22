@@ -187,6 +187,10 @@ DouZero-ADP (baselines/douzero_ADP/): 以平均分数差异（Average Difference
 DouZero_API.exe -H 127.0.0.1 -p 24814
 ```
 
+```bash
+python start.py -H 127.0.0.1 -p 24814
+```
+
 ## 超时检测
 
 程序每5分钟将检查一次进程列表，超过半个小时未响应的游戏进程将被删除。
